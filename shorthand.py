@@ -8,6 +8,7 @@ CHECK_COMMENT = "\t% TODO: Check shorthand. Propose: "
 EMPTY_SHORTHAND_PREFIX = "\tshorthand    = {"
 
 ID_PART = "id"
+TYPE_PART = "type"
 TITLE_PART = "title"
 AUTHOR_PART = "author"
 SHORTHAND_PART = "shorthand"
@@ -62,12 +63,14 @@ def extract_title(cite):
     if raw:
         words = re.split('\.|\s|,', raw)
         main_word = False
+        important_count = 0
         i = 0
         while i < len(words):
             if words[i]:
                 if words[i] in UNIMPORTANT_WORDS:
                     result += words[i].lower()[0]
                 elif not main_word:
+                    important_count += 1
                     main_word = True
                     result += words[i].upper()[0]
                     j = 1
@@ -77,7 +80,10 @@ def extract_title(cite):
                     if i + 1 != len(words) and words[i+1] in UNIMPORTANT_WORDS:
                         result += " "
                 else:
+                    important_count += 1
                     result += words[i].upper()[0]
+            if important_count == 5:
+                break
             i += 1
 
     return result
@@ -93,7 +99,12 @@ def extract_year(cite):
     return year
 
 def extract_type(cite):
-    return "art" if re.search("[a-zA-Z]", cite[TITLE_PART]) else "ст"
+    if cite[TYPE_PART].lower() == "misc":
+        return "el"
+    elif re.search("[a-zA-Z]", cite[TITLE_PART]):
+        return "art"
+    else:
+        return "ст"
 
 def generate_shorthand(cite):
     author = extract_author(cite)
@@ -127,11 +138,15 @@ def main(args):
         i = 0
         while i < len(lines):
             if lines[i][0] == '@':
-                id = lines[i][lines[i].find("{") + 1:len(lines[i])-2]
+                words = re.split("[@{,]", lines[i])
+                # id = lines[i][lines[i].find("{") + 1:len(lines[i])-2]
+                type = words[1]
+                id = words[2]
                 if id in bibliography:
                     cite_started = True
                     shorthand_exist = False
                     cite = {ID_PART: id}
+                    cite = {TYPE_PART: type}
                     [cite.update({part: ""}) for part in CITE_PARTS]
 
             if cite_started:
